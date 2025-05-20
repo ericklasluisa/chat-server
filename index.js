@@ -3,44 +3,34 @@ require("dotenv").config();
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
-const { Server } = require("socket.io");
-const dns = require("dns");
+const path = require("path");
+
+// Importar módulos
+const apiRoutes = require("./src/controllers/api");
+const { setupSocketIO } = require("./src/socket/socket");
 
 const app = express();
 
+// Middlewares
 app.use(cors({ origin: process.env.CORS_ORIGIN }));
+app.use(express.json()); // Permite que el servidor entienda los datos JSON en las solicitudes
 
+// Rutas API
+app.use("/api", apiRoutes);
+
+// Ruta para la página inicial
+app.get("/", (req, res) => {
+  res.send("Servidor de chat en tiempo real");
+});
+
+// Crear servidor HTTP
 const server = http.createServer(app);
 
-const io = new Server(server, {
-  cors: {
-    origin: process.env.CORS_ORIGIN,
-    methods: ["GET", "POST"],
-  },
-});
+// Configurar Socket.io
+setupSocketIO(server, process.env.CORS_ORIGIN);
 
-io.on("connection", (socket) => {
-  const clientIp = socket.handshake.address.replace("::ffff:", "");
-  //limitar el acceso a la ip de cliente ya conectado
-  console.log(`Client connected: ${clientIp}`);
-
-  dns.reverse(clientIp, (err, hostnames) => {
-    const hostname = err ? clientIp : hostnames[0];
-    console.log(`Client hostname: ${hostname}`);
-    socket.emit("host_info", { ip: clientIp, host: hostname });
-  });
-
-  socket.on("send_message", (msg) => {
-    io.emit("receive_message", msg);
-    console.log(`Message received: ${msg}`);
-  });
-
-  socket.on("disconnect", () => {
-    console.log(`Client disconnected: ${clientIp}`);
-  });
-});
-
+// Iniciar servidor
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Servidor ejecutándose en el puerto ${PORT}`);
 });
