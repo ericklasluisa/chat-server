@@ -109,12 +109,12 @@ function setupSocketHandlers(io, socket) {
 
     // Crear nueva sala con valores predeterminados si no se proporcionan
     const safeUsername = username.trim();
-    // Asegurar que maxUsers sea un número entre 1 y 10
+    // Asegurar que maxUsers sea un número entre 1 y 30
     let safeMaxUsers = 5; // Valor predeterminado
     if (maxUsers !== undefined && maxUsers !== null) {
-      const parsedMaxUsers = parseInt(maxUsers, 10);
+      const parsedMaxUsers = parseInt(maxUsers, 30);
       if (!isNaN(parsedMaxUsers) && parsedMaxUsers > 0) {
-        safeMaxUsers = Math.min(parsedMaxUsers, 10); // Establecer un límite máximo de 10 usuarios
+        safeMaxUsers = Math.min(parsedMaxUsers, 30); // Establecer un límite máximo de 30 usuarios
       }
     }
 
