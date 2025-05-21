@@ -15,7 +15,13 @@ const {
  * @param {Object} socket - Socket conectado
  */
 function setupSocketHandlers(io, socket) {
-  const clientIp = socket.handshake.address.replace("::ffff:", "");
+  // Obtener y formatear IP del cliente
+  let clientIp = socket.handshake.address.replace("::ffff:", "");
+  // Manejar caso especial de IPv6 localhost
+  if (clientIp === "::1") {
+    clientIp = "127.0.0.1"; // Convertir a IPv4 localhost
+  }
+
   let currentRoomPin = null;
   console.log(`Cliente conectado: ${clientIp}`);
 
@@ -24,8 +30,14 @@ function setupSocketHandlers(io, socket) {
   dns.reverse(clientIp, (err, hostnames) => {
     const hostname =
       err || !hostnames || hostnames.length === 0 ? clientIp : hostnames[0];
-    console.log(`Hostname del cliente: ${hostname}`);
-    socket.emit("host_info", { ip: clientIp, host: hostname });
+
+    // Caso especial para localhost
+    const displayIp =
+      clientIp === "127.0.0.1" ? "localhost (127.0.0.1)" : clientIp;
+    const displayHostname = hostname === "127.0.0.1" ? "localhost" : hostname;
+
+    console.log(`Hostname del cliente: ${displayHostname}`);
+    socket.emit("host_info", { ip: displayIp, host: displayHostname });
   }); // Crear una nueva sala
   socket.on("create_room", (data, callback) => {
     // Extraer username y maxUsers del objeto recibido
