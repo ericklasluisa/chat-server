@@ -14,10 +14,14 @@ const { setupSocketHandlers } = require("./handlers");
 function setupSocketIO(server, corsOrigin) {
   const io = new Server(server, {
     cors: {
-      origin: corsOrigin,
+      origin: corsOrigin || "*",
       methods: ["GET", "POST"],
+      credentials: true,
     },
+    transports: ["websocket", "polling"],
   });
+
+  console.log("Socket.io Conectado");
 
   io.on("connection", (socket) => {
     setupSocketHandlers(io, socket);

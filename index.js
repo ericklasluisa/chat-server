@@ -12,7 +12,13 @@ const { setupSocketIO } = require("./src/socket/socket");
 const app = express();
 
 // Middlewares
-app.use(cors({ origin: process.env.CORS_ORIGIN }));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "*",
+    methods: ["GET", "POST"],
+    credentials: true,
+  })
+);
 app.use(express.json()); // Permite que el servidor entienda los datos JSON en las solicitudes
 
 // Rutas API

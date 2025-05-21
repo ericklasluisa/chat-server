@@ -15,8 +15,12 @@ const {
  * @param {Object} socket - Socket conectado
  */
 function setupSocketHandlers(io, socket) {
-  // Obtener y formatear IP del cliente
-  let clientIp = socket.handshake.address.replace("::ffff:", "");
+  // Obtener IP de manera confiable
+  const clientIp =
+    socket.handshake.headers["x-forwarded-for"] ||
+    socket.handshake.address.replace("::ffff:", "");
+
+  console.log(`Nueva conexión desde IP: ${clientIp}`);
   // Manejar caso especial de IPv6 localhost
   if (clientIp === "::1") {
     clientIp = "127.0.0.1"; // Convertir a IPv4 localhost
