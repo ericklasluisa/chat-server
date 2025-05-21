@@ -15,53 +15,60 @@ const {
  * @param {Object} socket - Socket conectado
  */
 function setupSocketHandlers(io, socket) {
-  // Obtener IP de manera confiable
-  const clientIp =
+  // Obtener IP de manera confiable y normalizada
+  let clientIp =
     socket.handshake.headers["x-forwarded-for"] ||
     socket.handshake.address.replace("::ffff:", "");
 
+  // Normalizar la dirección IP (tomar solo la primera si hay múltiples)
+  if (clientIp && clientIp.includes(",")) {
+    clientIp = clientIp.split(",")[0].trim();
+  }
+
+  // Agregar el ID del socket para garantizar unicidad en el seguimiento
+  const clientIdentifier = `${clientIp}:${socket.id}`;
+
   console.log(`Nueva conexión desde IP: ${clientIp}`);
+
   // Manejar caso especial de IPv6 localhost
   if (clientIp === "::1") {
     clientIp = "127.0.0.1"; // Convertir a IPv4 localhost
   }
 
   let currentRoomPin = null;
-  console.log(`Cliente conectado: ${clientIp}`);
+  console.log(`Cliente conectado: ${clientIdentifier}`);
 
   // Enviar información del host al cliente
   const dns = require("dns");
 
-  // Extraer la primera dirección IP válida si hay múltiples (separadas por comas)
-  const cleanIp = clientIp.split(",")[0].trim();
-
   // Procesar la información del cliente sin depender de DNS reverse lookup
   const displayIp =
-    cleanIp === "127.0.0.1" || cleanIp === "::1"
+    clientIp === "127.0.0.1" || clientIp === "::1"
       ? "localhost (127.0.0.1)"
-      : cleanIp;
+      : clientIp;
 
+  // Enviar información del host de inmediato sin esperar DNS lookup
+  socket.emit("host_info", { ip: displayIp, host: displayIp });
+
+  // Intentar DNS lookup de manera asíncrona solo para IPs IPv4 estándar
   try {
-    // Intentar DNS reverse lookup solo si la IP parece ser válida (IPv4 simple)
-    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(cleanIp)) {
-      dns.reverse(cleanIp, (err, hostnames) => {
-        const hostname =
-          err || !hostnames || hostnames.length === 0 ? cleanIp : hostnames[0];
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(clientIp)) {
+      dns.reverse(clientIp, (err, hostnames) => {
+        if (!err && hostnames && hostnames.length > 0) {
+          const hostname = hostnames[0];
+          const displayHostname =
+            hostname === "127.0.0.1" ? "localhost" : hostname;
 
-        const displayHostname =
-          hostname === "127.0.0.1" ? "localhost" : hostname;
-
-        console.log(`Hostname del cliente: ${displayHostname}`);
-        socket.emit("host_info", { ip: displayIp, host: displayHostname });
+          console.log(`Hostname del cliente resuelto: ${displayHostname}`);
+          // Actualizar la información del host si se resolvió correctamente
+          socket.emit("host_info", { ip: displayIp, host: displayHostname });
+        }
       });
     } else {
-      // Para IPv6 u otros formatos, simplemente usar la IP como hostname
-      console.log(`Cliente con IP no estándar: ${cleanIp}`);
-      socket.emit("host_info", { ip: displayIp, host: cleanIp });
+      console.log(`Cliente con IP no estándar: ${clientIp}`);
     }
   } catch (error) {
     console.log(`Error al procesar información del host: ${error.message}`);
-    socket.emit("host_info", { ip: displayIp, host: cleanIp });
   }
 
   // Crear una nueva sala
@@ -373,7 +380,7 @@ function setupSocketHandlers(io, socket) {
 
   // Manejar desconexión
   socket.on("disconnect", () => {
-    console.log(`Client disconnected: ${clientIp}`);
+    console.log(`Client disconnected: ${clientIdentifier}`);
     handleUserLeaving();
   });
 
