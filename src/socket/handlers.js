@@ -31,18 +31,40 @@ function setupSocketHandlers(io, socket) {
 
   // Enviar información del host al cliente
   const dns = require("dns");
-  dns.reverse(clientIp, (err, hostnames) => {
-    const hostname =
-      err || !hostnames || hostnames.length === 0 ? clientIp : hostnames[0];
 
-    // Caso especial para localhost
-    const displayIp =
-      clientIp === "127.0.0.1" ? "localhost (127.0.0.1)" : clientIp;
-    const displayHostname = hostname === "127.0.0.1" ? "localhost" : hostname;
+  // Extraer la primera dirección IP válida si hay múltiples (separadas por comas)
+  const cleanIp = clientIp.split(",")[0].trim();
 
-    console.log(`Hostname del cliente: ${displayHostname}`);
-    socket.emit("host_info", { ip: displayIp, host: displayHostname });
-  }); // Crear una nueva sala
+  // Procesar la información del cliente sin depender de DNS reverse lookup
+  const displayIp =
+    cleanIp === "127.0.0.1" || cleanIp === "::1"
+      ? "localhost (127.0.0.1)"
+      : cleanIp;
+
+  try {
+    // Intentar DNS reverse lookup solo si la IP parece ser válida (IPv4 simple)
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(cleanIp)) {
+      dns.reverse(cleanIp, (err, hostnames) => {
+        const hostname =
+          err || !hostnames || hostnames.length === 0 ? cleanIp : hostnames[0];
+
+        const displayHostname =
+          hostname === "127.0.0.1" ? "localhost" : hostname;
+
+        console.log(`Hostname del cliente: ${displayHostname}`);
+        socket.emit("host_info", { ip: displayIp, host: displayHostname });
+      });
+    } else {
+      // Para IPv6 u otros formatos, simplemente usar la IP como hostname
+      console.log(`Cliente con IP no estándar: ${cleanIp}`);
+      socket.emit("host_info", { ip: displayIp, host: cleanIp });
+    }
+  } catch (error) {
+    console.log(`Error al procesar información del host: ${error.message}`);
+    socket.emit("host_info", { ip: displayIp, host: cleanIp });
+  }
+
+  // Crear una nueva sala
   socket.on("create_room", (data, callback) => {
     // Extraer username y maxUsers del objeto recibido
     let username, maxUsers;
