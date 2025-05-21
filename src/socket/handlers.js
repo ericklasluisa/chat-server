@@ -38,38 +38,22 @@ function setupSocketHandlers(io, socket) {
   let currentRoomPin = null;
   console.log(`Cliente conectado: ${clientIdentifier}`);
 
-  // Enviar información del host al cliente
-  const dns = require("dns");
-
-  // Procesar la información del cliente sin depender de DNS reverse lookup
+  // Evitar completamente la resolución DNS que está causando problemas
+  // y simplificar el manejo de información del host
   const displayIp =
     clientIp === "127.0.0.1" || clientIp === "::1"
       ? "localhost (127.0.0.1)"
       : clientIp;
 
-  // Enviar información del host de inmediato sin esperar DNS lookup
-  socket.emit("host_info", { ip: displayIp, host: displayIp });
+  // Emitir información del host inmediatamente sin intentar DNS reverse lookup
+  socket.emit("host_info", {
+    ip: displayIp,
+    host: displayIp,
+    socketId: socket.id,
+  });
 
-  // Intentar DNS lookup de manera asíncrona solo para IPs IPv4 estándar
-  try {
-    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(clientIp)) {
-      dns.reverse(clientIp, (err, hostnames) => {
-        if (!err && hostnames && hostnames.length > 0) {
-          const hostname = hostnames[0];
-          const displayHostname =
-            hostname === "127.0.0.1" ? "localhost" : hostname;
-
-          console.log(`Hostname del cliente resuelto: ${displayHostname}`);
-          // Actualizar la información del host si se resolvió correctamente
-          socket.emit("host_info", { ip: displayIp, host: displayHostname });
-        }
-      });
-    } else {
-      console.log(`Cliente con IP no estándar: ${clientIp}`);
-    }
-  } catch (error) {
-    console.log(`Error al procesar información del host: ${error.message}`);
-  }
+  // Eliminar el intento de DNS reverse lookup que está causando problemas
+  console.log(`Cliente conectado con IP: ${displayIp}`);
 
   // Crear una nueva sala
   socket.on("create_room", (data, callback) => {
