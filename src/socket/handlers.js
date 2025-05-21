@@ -101,7 +101,7 @@ function setupSocketHandlers(io, socket) {
     // Unir socket a la sala
     socket.join(pin);
 
-    console.log(`Sala ${pin} creada por (${clientIp})`);
+    console.log(`Sala ${pin} creada por (${safeUsername} - ${clientIp})`);
 
     // Devolver información de la sala al cliente si se proporcionó un callback
     if (typeof callback === "function") {
